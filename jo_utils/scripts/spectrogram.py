@@ -1,3 +1,4 @@
+import time
 from multiprocessing import Pool, cpu_count
 from functools import partial
 import numpy as np
@@ -19,9 +20,20 @@ def get_interval_times(t, stride, width):
 
 def power_spectrum(data, window):
     fft = np.fft.rfft(data * window)
-    return (np.abs(fft)+1e-20)
+    return np.abs(fft)
 
 
+def timer(func, *args, **kwargs):
+    def count_ticks(*args, **kwargs):
+        t1 = time.time()
+        ret = func(*args, **kwargs)
+        t2 = time.time()
+        print(f'{func.__name__} took {t2-t1:1.3f} seconds')
+        return ret
+    return count_ticks
+
+
+@timer
 def spectrogram_multiprocess(data, fs, t):
     stride = fs//2
     width = fs*30
@@ -38,6 +50,7 @@ def spectrogram_multiprocess(data, fs, t):
     return np.array( pool.map(my_power_spectrum, slider) ), times
 
 
+@timer
 def spectrogram(data, fs, t):
 
     stride = fs//2
@@ -48,11 +61,10 @@ def spectrogram(data, fs, t):
 
     window = np.hamming(width)
 
-
     return np.array([power_spectrum(s, window) for s in slider]), times
 
 
-def draw_spectrogram(spec, fs, times):
+def draw_spectrogram(spec, fs, times, filename):
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
 
@@ -66,14 +78,14 @@ def draw_spectrogram(spec, fs, times):
     ax.set_xlabel('Time')
 
 
-    plt.savefig('spectrum_mp.png')
+    plt.savefig(filename)
     #plt.show()
 
 
 if __name__ == '__main__':
 
     fs = 128
-    N = fs*300
+    N = fs*30
 
     t = np.linspace(0, N, N*fs)
     f_init = 10
@@ -82,9 +94,16 @@ if __name__ == '__main__':
 
     data = np.sin(2*np.pi*(f_init*t + 0.5*alpha*t*t)) + np.random.normal(len(t))
 
-    #spec, times = spectrogram_multiprocess(data, fs=fs, t=t)
+    print('Multiprocessing')
+    spec, times = spectrogram_multiprocess(data, fs=fs, t=t)
+
+    draw_spectrogram( 10*np.arcsinh(spec), fs=fs, times=times, filename='spectrum_mp.png')
+
+
+    print('Single CPU')
     spec, times = spectrogram(data, fs=fs, t=t)
 
-    draw_spectrogram( 10*np.arcsinh(spec), fs=fs, times=times)
+    draw_spectrogram( 10*np.arcsinh(spec), fs=fs, times=times, filename='spectrum.png')
+
 
 
