@@ -12,4 +12,4 @@ class SlidingWindow:
         while self.pos + self.width <= len(self.data):
             yield self.data[self.pos:self.pos + self.width]
             self.pos += self.stride
-                 
+

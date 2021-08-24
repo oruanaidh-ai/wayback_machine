@@ -8,7 +8,7 @@ if __name__ == '__main__':
         txt = ''
         for line in fp:
             if line.strip() != '':
-                    
+
                 txt += line
 
             else:
@@ -20,7 +20,7 @@ if __name__ == '__main__':
                 year2txt[year].append(txt)
                 txt = ''
 
-                    
+
 
         years = sorted( year2txt.keys() )
 
