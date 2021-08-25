@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sys.path.append('/Users/oruanaidh/projects/wayback_machine/jo_utils')
+sys.path.append('/Users/oruanaidh/projects/wayback_machine/PYTHON/utils')
 
 from tools.dsp.sliding_window import SlidingWindow
 
