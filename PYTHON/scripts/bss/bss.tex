@@ -1,0 +1,144 @@
+\chapter{BSS}
+
+
+\section{Mixing and demixing}
+
+The two sources are mixed as follows:
+\begin{align}
+  y_1(t) & = s_1(t) + s_2(t) \\
+  y_2(t) & = s_1(t+\delta_1) + s_2(t+\delta_2)
+\end{align}
+where $\delta_1$ and $\delta_2$ are delays that depend on the distance
+between the microphones and the directions of the sources.
+
+
+In the frequency domain:
+\begin{align}
+  Y_1(\omega) & = S_1(\omega) + S_2(\omega) \\
+  Y_2(\omega) & = e^{-\omega\delta_1}S_1(\omega) + e^{-\omega\delta_2}S_2(\omega)
+\end{align}
+
+This is a scalar mixture! So we can just do PCA and we are done. Not
+so fast. There is a permutation problem. There is no guarantee that
+signal 1 will appear on ouput channel 1, or signal 2 on output channel
+2. If we were to apply PCA to all the different frequencies then we
+would still have the problem of determining which output should be on
+which channel. If there are $N$ different frequencies then there will
+be $2^N$ different possibilities to choose from.
+
+In radar, there is only one frequency so this doesn't matter so we can
+use PCA. Speech is broadband. We need a different approach.
+
+Let us write the delay operation as follows:
+\begin{align}
+  z_1 & =  e^{-\omega\delta_1}\\
+  z_2 & =  e^{-\omega\delta_2}
+\end{align}
+
+We can write the mixing process as:
+\begin{equation}
+  \begin{bmatrix}
+    Y_1(\omega)\\
+    Y_2(\omega)
+  \end{bmatrix}
+  =
+  \begin{bmatrix}
+  1 & 1\\
+  z_1 & z_2
+  \end{bmatrix}
+  \begin{bmatrix}
+  S_1(\omega)\\
+  S_2(\omega)
+    \end{bmatrix}
+\end{equation}
+
+The inverse is
+\begin{equation}
+  \begin{bmatrix}
+    S_1(\omega)\\
+    S_2(\omega)
+  \end{bmatrix}
+  =
+  \frac{1}{z_2-z_1}
+  \begin{bmatrix}
+  z_2 & -1\\
+  -z_1 & 1
+  \end{bmatrix}
+  \begin{bmatrix}
+  Y_1(\omega)\\
+  Y_2(\omega)
+    \end{bmatrix}
+ \end{equation}   
+
+We are going to ignore the determinant term because of the possibility of dividing by zero (or by some number close to zero).
+
+\begin{equation}
+  \begin{bmatrix}
+    X_1(\omega)\\
+    X_2(\omega)
+  \end{bmatrix}
+  =
+  \begin{bmatrix}
+  z_2 & -1\\
+  -z_1 & 1
+  \end{bmatrix}
+  \begin{bmatrix}
+  Y_1(\omega)\\
+  Y_2(\omega)
+    \end{bmatrix}
+ \end{equation}   
+
+
+So, if we could just find $\delta_1$ and $\delta_2$, we would demix as follows:
+\begin{align}
+  x_1(t) & = y_1(t+\delta_2) - y_2(t) \\
+  x_2(t) & = -y_1(t+\delta_1) + y_2(t)
+\end{align}
+
+
+\section{The cost function}
+
+We know that $x_1(t)$ and $x_2(t)$ are uncorrelated. That means that
+we should find $\delta_1$ and $\delta_2$ that minimize the correlation
+between $x_1(t)$ and $x_2(t)$.
+
+Jumping back into the frequency domain, we need to minimize the
+magnitude of $X_1(\omega) \overline{X_2(\omega)}$. We take the complex
+conjugate because this is not a convolution - it's a correlation:
+\begin{align}
+  X_1(\omega) \overline{X_2(\omega)} & = \left(z_2 Y_1(\omega) - Y_2(\omega)\right) \overline{\left(-z_1 Y_1(\omega) + Y_2(\omega)\right) }\\
+  & = -z_2 \overline{z_1} Y_1 \overline{Y_1} + z_2 Y_1 \overline{Y_2} + \overline{z_1} Y_2 \overline{Y_1} - Y_2 \overline{Y_2}
+\end{align}
+
+We sum the square of the magnitude of $X_1(\omega)
+\overline{X_2(\omega)}$ over all frequencies and call that the cost
+function.  Summing the square of the magnitude has another
+advantage. According to Parseval's Theorem, the cost function is
+identical to the sum of the squares of the cross correlations between
+$x_1(t)$ and $x_2(t)$ in the time domain. This is a nice result
+because the time domain justification for this cost function is easy
+to understand.
+
+
+\subsection{Cost function details}
+
+As always, the devil is in the details:
+
+\begin{itemize}
+
+\item The cost function is multimodal. That's a bad thing if we are
+  using a standard optimization routine because, depending on starting
+  position, it might not find the best solution at the global
+  minimum. Beware the local minimum. To mitigate against this, we do a coarse
+  grid search first. And then use an optimizer to clean up the answer.
+
+
+\item We take the logarithm of the sum of squares. This is done for the sake of numerical stability because the cost function changes very quickly.
+
+  \item Note that only $z_1$ and $z_2$ are functions of $\delta_1$ and $\delta_2$. We can precompute auto- and cross-correlations of  $Y_1 \overline{Y_1}$, $Y_1 \overline{Y_2}$, $Y_2 \overline{Y_1}$, and $Y_2 \overline{Y_2}$ in advance to save computation.
+
+
+\end{itemize}
+
+
+

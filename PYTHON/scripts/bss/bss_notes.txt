@@ -1,0 +1,24 @@
+Synopsis from this morning:
+
+- PCA is great (example code)
+- PCA assumes white Gaussian noise
+- Audio is not white Gaussian noise
+- Still works
+
+- ICA = non Gaussian distributions
+- Minimum Mutual Information -> Maximum Statistical Independence
+- Gradient following - Bell Sejnowski
+
+- Real world
+- Signal Delays
+- Not a scalar mixture in time domain
+- Is scalar mixture in frequency domain
+- Demix is different at every frequency => permutation problem
+- PCA does not work
+
+- Cost function = sum of squares of cross correlations in demixture
+- Time domain sum of squares = Frequency domain sum of squares (Parseval's Theorem)
+
+- anechoic environment
+- echoic environment
+
