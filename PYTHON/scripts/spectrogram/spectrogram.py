@@ -33,7 +33,7 @@ def get_interval_times(t, stride, width):
     nBlk = (len(t)-width)//stride + 1
     nSample = nBlk * stride
 
-    return np.linspace(t[width//2], t[width//2 + nSample], nBlk)
+    return np.linspace(t[width//2]/FS, t[width//2 + nSample]/FS, nBlk)
 
 
 def power_spectrum(indx, width, window, fs, maxF):
