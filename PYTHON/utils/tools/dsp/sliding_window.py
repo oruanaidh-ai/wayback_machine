@@ -13,3 +13,14 @@ class SlidingWindow:
             yield self.data[self.pos:self.pos + self.width]
             self.pos += self.stride
 
+
+class SlidingWindowIndexer(SlidingWindow):
+
+    def __init__(self, data, stride, width):
+        super().__init__(data, stride, width)
+
+    def __iter__(self):
+        while self.pos + self.width <= len(self.data):
+            yield self.pos
+            self.pos += self.stride
+

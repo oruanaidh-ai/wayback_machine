@@ -8,21 +8,38 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
+FS = 128
+N = FS*60*10
+maxF = 3
+STRIDE = FS
+WIDTH = 32*FS
+
+t = np.linspace(0, N, N*FS)
+f_init = 1
+f_final = 2
+alpha = (f_final - f_init)/N
+
+data = np.sin(2*np.pi*(f_init*t + 0.5*alpha*t*t)) + np.random.normal(len(t))
+
+
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.join(*current_dir.split(os.path.sep)[:-2])
 sys.path.append( str( Path('/') / Path(parent_dir) / 'utils' ) )
 
-from tools.dsp.sliding_window import SlidingWindow
+from tools.dsp.sliding_window import SlidingWindowIndexer
 
 
 def get_interval_times(t, stride, width):
-    times = SlidingWindow(t, stride=stride, width=width)
-    return np.mean([*times], axis=-1)
+    nBlk = (len(t)-width)//stride + 1
+    nSample = nBlk * stride
+
+    return np.linspace(t[width//2], t[width//2 + nSample], nBlk)
 
 
-def power_spectrum(data, window, fs, maxF):
-    fft = np.fft.rfft((data - np.mean(data)) * window)
-    crop = int( maxF/fs * len(data) )
+def power_spectrum(indx, width, window, fs, maxF):
+    d = data[indx:indx+width]
+    fft = np.fft.rfft((d - np.mean(d)) * window)
+    crop = int( maxF/fs * width )
     return np.abs(fft)[:crop]
 
 
@@ -37,34 +54,33 @@ def timer(func, *args, **kwargs):
 
 
 @timer
-def spectrogram_multiprocess(data, fs, t, maxF):
-    stride = fs
-    width = fs*30
-    slider = SlidingWindow(data, stride=stride, width=width)
+def spectrogram_multiprocess(fs, t, maxF):
+    slider = SlidingWindowIndexer(data, stride=STRIDE, width=WIDTH)
 
-    window = np.hamming(width)
+    window = np.hamming(WIDTH)
 
-    times = get_interval_times(t, stride, width)
+    times = get_interval_times(t, STRIDE, WIDTH)
 
-    with Pool(cpu_count()) as pool:
-        spec = pool.map(partial(power_spectrum, window=window, fs=fs, maxF=maxF),  slider, chunksize=5000)
+    psfunc = partial(power_spectrum, width=WIDTH, window=window, fs=fs, maxF=maxF)
 
-    return np.array( spec ), times
+    with Pool(cpu_count()-2) as pool:
+        spec = np.array( pool.map(psfunc,  slider, chunksize=2**10))
+
+    return spec, times
 
 
 @timer
-def spectrogram(data, fs, t, maxF):
+def spectrogram(fs, t, maxF):
 
-    stride = fs
-    width = fs*30
-    slider = SlidingWindow(data, stride=stride, width=width)
+    slider = SlidingWindowIndexer(data, stride=STRIDE, width=WIDTH)
 
-    times = get_interval_times(t, stride, width)
+    times = get_interval_times(t, STRIDE, WIDTH)
 
-    window = np.hamming(width)
+    window = np.hamming(WIDTH)
 
-    spec = [power_spectrum(s, window, fs, maxF) for s in slider]
-    return np.array(spec), times
+    spec = np.array([power_spectrum(indx, WIDTH, window, fs, maxF) for indx in slider])
+
+    return spec, times
 
 
 def draw_spectrogram(spec, fs, times, maxF, filename):
@@ -85,27 +101,17 @@ def draw_spectrogram(spec, fs, times, maxF, filename):
 
 
 def main():
-    fs = 150
-    N = fs*3600
-    maxF = 3
-
-    t = np.linspace(0, N, N*fs)
-    f_init = 1
-    f_final = 2
-    alpha = (f_final - f_init)/N
-
-    data = np.sin(2*np.pi*(f_init*t + 0.5*alpha*t*t)) + np.random.normal(len(t))
 
     print('Multiprocessing')
-    spec, times = spectrogram_multiprocess(data, fs=fs, t=t, maxF=maxF)
+    spec, times = spectrogram_multiprocess(fs=FS, t=t, maxF=maxF)
 
-    #draw_spectrogram( np.arcsinh(spec), fs=fs, times=times, filename='spectrum_mp.png')
+    #draw_spectrogram( np.arcsinh(spec), fs=FS, times=times, filename='spectrum_mp.png')
 
 
     print('Single CPU')
-    spec, times = spectrogram(data, fs=fs, t=t, maxF=maxF)
+    spec, times = spectrogram(fs=FS, t=t, maxF=maxF)
 
-    draw_spectrogram( np.arcsinh(spec*100), fs=fs, times=times, maxF=maxF, filename='spectrum.png')
+    draw_spectrogram( np.arcsinh(spec*100), fs=FS, times=times, maxF=maxF, filename='spectrum.png')
     
     
 if __name__ == '__main__':
